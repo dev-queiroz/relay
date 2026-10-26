@@ -1,36 +1,34 @@
 # Engineering Handbook
 
-## Roles
-**Senior Backend Engineer (repository owner):** proposes designs, writes implementation and tests, documents trade-offs, and defends changes.
-**Tech Lead (AI):** prioritizes work, prepares specifications, challenges assumptions, and reviews PRs. All AI suggestions remain subject to the engineer's judgment.
+## Fixed responsibilities
+**Tech Lead (AI):** owns and writes all product specifications, architecture documents, ADRs, acceptance criteria, backlog organization and review feedback.
+**Backend Engineer (repository owner):** writes application code, tests, build configuration, fixes review findings, and submits PRs. No quizzes or documentation assignments. Engineer may challenge a spec through PR discussion; Tech Lead updates documentation.
 
-## Branching and review
-- Never implement directly on `main`. Use `docs/<issue>-short-name`, `feat/<issue>-short-name`, or `fix/<issue>-short-name`.
-- Keep PRs focused on one issue; prefer incremental changes.
-- PR descriptions must reference the issue, explain trade-offs, and include reproducible tests.
-- Avoid merging unresolved blocking review comments or failing CI.
+## Language and workflow
+All engineering artifacts and review comments are written in English.
+
+- Work one ready-for-dev task at a time. Start with #6.
+- Never implement directly on `main`. Use `feat/<issue>-short-name` or `fix/<issue>-short-name`.
+- Keep PRs focused on a single issue and link it with `Closes #N`.
+- Prefer small independent changes with working tests.
+- PR describes implementation, verification commands, failure coverage, and open concerns.
 - Use Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`.
 
 ## Definition of Done
-- Acceptance criteria are satisfied with evidence.
-- Appropriate tests are automated, or limitations explicitly explained.
-- Security, data integrity, and failure behavior have been considered.
-- Significant decisions are documented in an ADR.
-- PR has a clear review summary and verification instructions.
+- Acceptance criteria met with reproducible proof.
+- Appropriate unit/integration tests passed.
+- Failure cases and data integrity addressed.
+- No secrets, unrelated changes, or unsupported performance claims.
+- Tech Lead review completed with no unresolved blockers or major concerns.
 
-## Working protocol
-1. Tech Lead issues a problem statement and acceptance criteria, not implementation code.
-2. Engineer investigates and proposes a design.
-3. Tech Lead reviews alternatives and hidden failure cases.
-4. Engineer implements and tests.
-5. Tech Lead reviews the PR; engineer addresses feedback.
-6. Engineer merges when review criteria are met.
+## Review levels
+- **Blocker:** invalid contract, security, integrity or correctness.
+- **Major:** significant missing tests, reliability risk, or maintainability.
+- **Minor:** polish; may follow up separately.
+- **Question:** clarification or trade-off.
 
-## Review severity
-**Blocker:** incorrect data integrity/security/contract.
-**Major:** missing tests, dangerous operational behavior, or maintainability risk.
-**Minor:** small improvements not preventing merge.
-**Question:** decision requiring clarification.
+## Documentation governance
+The Tech Lead is responsible for maintaining `docs/` and technical decision records. The engineer should implement against the committed documentation, not author it as part of development tickets unless a code-adjacent README or API schema is explicitly part of implementation.
 
-## Decision records
-Use `docs/adr/NNNN-title.md` for decisions with material architectural consequences. Record context, options, decision, consequences, and revisit conditions.
+## Milestone workflow
+M0 specifications are complete. M1 starts with #6 and advances by issue dependencies. M2+ remain roadmap until the first vertical slice passes verification.
