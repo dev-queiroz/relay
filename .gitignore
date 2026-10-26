@@ -1,0 +1,22 @@
+# Java / Maven
+target/
+*.class
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# Editors / system
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build and test outputs
+coverage/
+build/
+out/
