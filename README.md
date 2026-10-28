@@ -27,6 +27,81 @@ Applications need to deliver events to third-party HTTP endpoints despite downti
 
 These milestones are tentative, not release commitments.
 
+
+## Development
+
+### Prerequisites
+
+- Java 25 (JDK)
+- Git
+
+The project uses the Maven Wrapper, so a global Maven installation is not required.
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/dev-queiroz/relay.git
+cd relay
+```
+
+### Run Locally
+
+On Windows PowerShell:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+On Linux or macOS:
+
+```bash
+./mvnw spring-boot:run
+```
+
+The application starts at `http://localhost:8080`.
+
+### Health Check
+
+Once the application is running:
+
+```powershell
+curl.exe -i http://localhost:8080/actuator/health
+```
+
+Expected HTTP status: `200 OK`
+
+Expected response:
+
+```json
+{
+  "groups": [
+    "liveness",
+    "readiness"
+  ],
+  "status": "UP"
+}
+```
+
+### Run Tests
+
+On Windows PowerShell:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+On Linux or macOS:
+
+```bash
+./mvnw clean verify
+```
+
+A successful execution should finish with `BUILD SUCCESS`.
+
+### Continuous Integration
+
+GitHub Actions automatically compiles the application and runs its tests using Java 25 on pull requests targeting `main` and pushes to `main`.
+
 ## Start here
 
 1. Read [Engineering Handbook](docs/engineering/handbook.md).

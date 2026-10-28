@@ -1,22 +1,33 @@
-# Java / Maven
+HELP.md
 target/
-*.class
-*.log
 .mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
-# Editors / system
-.idea/
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
 *.iml
-.vscode/
-.DS_Store
-Thumbs.db
+*.ipr
 
-# Environment
-.env
-.env.*
-!.env.example
-
-# Build and test outputs
-coverage/
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
 build/
-out/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
