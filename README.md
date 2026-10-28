@@ -34,6 +34,7 @@ These milestones are tentative, not release commitments.
 
 - Java 25 (JDK)
 - Git
+- Docker with the Compose plugin (for PostgreSQL and Testcontainers)
 
 The project uses the Maven Wrapper, so a global Maven installation is not required.
 
@@ -45,6 +46,34 @@ cd relay
 ```
 
 ### Run Locally
+
+Start the local PostgreSQL instance:
+
+```bash
+docker compose up -d db
+```
+
+The Compose database is for local development only. Export the datasource values
+before starting the application; do not commit personal or shared credentials.
+
+On Windows PowerShell:
+
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:5432/relay"
+$env:DB_USERNAME = "relay"
+$env:DB_PASSWORD = "relay"
+```
+
+On Linux or macOS:
+
+```bash
+export DB_URL=jdbc:postgresql://localhost:5432/relay
+export DB_USERNAME=relay
+export DB_PASSWORD=relay
+```
+
+If port 5432 is already in use, start Compose with `POSTGRES_PORT` set to an
+available local port and use that same port in `DB_URL`.
 
 On Windows PowerShell:
 
