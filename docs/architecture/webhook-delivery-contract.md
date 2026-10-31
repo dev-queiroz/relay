@@ -26,6 +26,7 @@ When a new event is durably accepted, insert one Delivery per enabled endpoint o
 - Claim up to a bounded batch of due deliveries using PostgreSQL locking with SKIP LOCKED, a lease token, lease expiration and a short transaction.
 - Persist an Attempt before contacting destination; increment attemptsCount atomically. Do not keep DB transaction open across HTTP.
 - Request: POST application/json with stable `X-Relay-Delivery-Id`, `X-Relay-Event-Id` and `X-Relay-Attempt`. Payload envelope: `{ "id": "<event UUID>", "type": "<event type>", "createdAt": "<ISO-8601>", "payload": {...} }`.
+- Authentication: `X-Relay-Timestamp` is Unix epoch seconds. `X-Relay-Signature` is `v1=<lowercase-hex(HMAC-SHA-256(secret, timestamp + "." + exact UTF-8 request bytes))>`. Each endpoint has one active 256-bit secret; rotating it retires the previous secret immediately. Receivers must use a constant-time comparison, reject missing/malformed timestamps, enforce a short freshness window (five minutes is recommended), and deduplicate `X-Relay-Delivery-Id` to prevent replay within that window. Example: for timestamp `1700000000`, sign the literal byte sequence `1700000000.{"id":"..."}`.
 - Default connect timeout: 2 s; total request timeout: 5 s. Do not follow redirects.
 - 2xx => SUCCEEDED. 408, 429, 5xx, transport errors and timeout => retryable. Other 3xx/4xx => EXHAUSTED (no redirect).
 - A late result with an expired/replaced lease token must not overwrite newer state.

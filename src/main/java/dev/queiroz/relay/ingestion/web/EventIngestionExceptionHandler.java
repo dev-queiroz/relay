@@ -1,10 +1,13 @@
 package dev.queiroz.relay.ingestion.web;
 
 import dev.queiroz.relay.ingestion.application.IdempotencyConflictException;
+import dev.queiroz.relay.ingestion.application.RateLimitExceededException;
 import dev.queiroz.relay.ingestion.domain.InvalidEventException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.TransactionException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +38,13 @@ public class EventIngestionExceptionHandler extends ResponseEntityExceptionHandl
     @ExceptionHandler(IdempotencyConflictException.class)
     ProblemDetail idempotencyConflict() {
         return problem(HttpStatus.CONFLICT, "Idempotency conflict", "Idempotency-Key was previously used with a different request");
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<ProblemDetail> rateLimited() {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, "60")
+                .body(problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", "Tenant request limit exceeded; retry after 60 seconds"));
     }
 
     @ExceptionHandler({DataAccessException.class, TransactionException.class})
