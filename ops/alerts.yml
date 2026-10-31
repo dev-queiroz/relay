@@ -1,0 +1,9 @@
+groups:
+  - name: relay
+    rules:
+      - alert: RelayBacklogStale
+        expr: relay_delivery_backlog_age_seconds > 300
+        for: 10m
+      - alert: RelayDeliveryFailures
+        expr: increase(relay_delivery_failed_total[15m]) > 10
+        for: 5m
