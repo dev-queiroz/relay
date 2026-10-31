@@ -18,6 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Check production configuration has no credential defaults
+        run: |
+          ! rg -n 'spring\.datasource\.(username|password)=.*:-' src/main/resources
+          ! rg -n 'RELAY_SECRETS_ENCRYPTION_KEY.*:-' src/main/resources
+
       - name: Set up Java 25
         uses: actions/setup-java@v6
         with:
