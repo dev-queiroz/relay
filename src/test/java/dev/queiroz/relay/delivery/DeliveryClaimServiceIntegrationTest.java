@@ -18,6 +18,7 @@ import java.util.*; import static org.junit.jupiter.api.Assertions.*;
   assertEquals(1,first.size()); assertTrue(second.isEmpty()); assertFalse(claims.finalize(id,UUID.randomUUID(),"SUCCEEDED",java.time.Instant.now())); assertTrue(claims.finalize(id,first.getFirst().leaseToken(),"SUCCEEDED",java.time.Instant.now()));
  }
  @Test void reclaimsExpiredLease(){ UUID id=delivery("IN_FLIGHT",1,java.time.Instant.now().minusSeconds(1)); var claimed=claims.claimDue(1,java.time.Duration.ofMinutes(1)); assertEquals(id,claimed.getFirst().deliveryId()); assertEquals(2,claimed.getFirst().attemptNumber()); }
+ @Test void exhaustsExpiredFifthLeaseBeforeApplyingClaimLimit(){ UUID exhausted=delivery("IN_FLIGHT",5,java.time.Instant.now().minusSeconds(1)); UUID pending=delivery("PENDING",0,null); var claimed=claims.claimDue(1,java.time.Duration.ofMinutes(1)); assertEquals(pending,claimed.getFirst().deliveryId()); assertEquals("EXHAUSTED",jdbc.queryForObject("SELECT state FROM deliveries WHERE id=?",String.class,exhausted)); }
  @Test void claimBoundsAreValidated(){assertThrows(IllegalArgumentException.class,()->claims.claimDue(0,java.time.Duration.ofSeconds(1)));}
  private UUID delivery(String state,int attempts,java.time.Instant leaseExpiry){
   String tenant=UUID.randomUUID().toString(); UUID event=UUID.randomUUID(), endpoint=UUID.randomUUID(), delivery=UUID.randomUUID();
