@@ -158,6 +158,15 @@ class EndpointControllerTest {
                 .andExpect(jsonPath("$.detail").value("Event storage is temporarily unavailable; retry the same request"));
     }
 
+    @Test
+    void authenticatesBeforeReadingAndBoundsMutationBodies() throws Exception {
+        String oversized = "{\"name\":\"" + "a".repeat(EndpointController.MAX_REQUEST_BYTES) + "\"}";
+        mockMvc.perform(post("/v1/endpoints").contentType(MediaType.APPLICATION_JSON).content(oversized))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/v1/endpoints").header("X-Relay-Api-Key", API_KEY).contentType(MediaType.APPLICATION_JSON).content(oversized))
+                .andExpect(status().isPayloadTooLarge());
+    }
+
     private Endpoint endpoint(String name) {
         return new Endpoint(UUID.randomUUID(), TENANT, name, URI.create("https://public.example/hooks"), true, Instant.parse("2026-10-31T12:00:00Z"));
     }

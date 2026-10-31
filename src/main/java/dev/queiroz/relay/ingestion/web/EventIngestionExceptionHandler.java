@@ -5,6 +5,8 @@ import dev.queiroz.relay.ingestion.application.RateLimitExceededException;
 import dev.queiroz.relay.api.pagination.InvalidCursorException;
 import dev.queiroz.relay.delivery.web.EndpointInvalidRequestException;
 import dev.queiroz.relay.delivery.web.EndpointNotFoundException;
+import dev.queiroz.relay.delivery.web.EndpointPayloadTooLargeException;
+import dev.queiroz.relay.delivery.web.EndpointUnsupportedContentTypeException;
 import dev.queiroz.relay.ingestion.domain.InvalidEventException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -40,11 +42,19 @@ public class EventIngestionExceptionHandler extends ResponseEntityExceptionHandl
     ProblemDetail unsupportedContentType() {
         return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", "Content-Type must be application/json");
     }
+    @ExceptionHandler(EndpointUnsupportedContentTypeException.class)
+    ProblemDetail endpointUnsupportedContentType() {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", "Content-Type must be application/json");
+    }
     @ExceptionHandler(UnauthorizedException.class)
     ProblemDetail unauthorized() { return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "A valid API key is required"); }
 
     @ExceptionHandler(PayloadTooLargeException.class)
     ProblemDetail payloadTooLarge() {
+        return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Request body too large", "Request body must not exceed 65536 bytes");
+    }
+    @ExceptionHandler(EndpointPayloadTooLargeException.class)
+    ProblemDetail endpointPayloadTooLarge() {
         return problem(HttpStatus.PAYLOAD_TOO_LARGE, "Request body too large", "Request body must not exceed 65536 bytes");
     }
 

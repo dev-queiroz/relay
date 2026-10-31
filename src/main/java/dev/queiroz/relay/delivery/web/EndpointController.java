@@ -11,18 +11,23 @@ import dev.queiroz.relay.ingestion.domain.TenantId;
 import dev.queiroz.relay.ingestion.web.UnauthorizedException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -35,26 +40,29 @@ import java.util.UUID;
 @RequestMapping("/v1/endpoints")
 public class EndpointController {
     private static final String ROUTE = "v1/endpoints";
+    static final int MAX_REQUEST_BYTES = 64 * 1024;
     private static final int DEFAULT_LIMIT = 20;
     private static final int MAX_LIMIT = 100;
     private final EndpointAdministrationService endpoints;
     private final ApiKeyService apiKeys;
     private final TenantRateLimitService limits;
     private final CursorCodec cursors;
+    private final ObjectMapper objectMapper;
 
     public EndpointController(EndpointAdministrationService endpoints, ApiKeyService apiKeys,
-                              TenantRateLimitService limits, CursorCodec cursors) {
+                              TenantRateLimitService limits, CursorCodec cursors, ObjectMapper objectMapper) {
         this.endpoints = endpoints;
         this.apiKeys = apiKeys;
         this.limits = limits;
         this.cursors = cursors;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping
     public ResponseEntity<CreatedEndpointResponse> create(@RequestHeader(value = "X-Relay-Api-Key", required = false) String apiKey,
-                                                           @RequestBody JsonNode body) {
+                                                           HttpServletRequest httpRequest) throws IOException {
         TenantId tenant = authenticatedTenant(apiKey);
-        CreateEndpointRequest request = createRequest(body);
+        CreateEndpointRequest request = createRequest(readJsonObject(httpRequest));
         EndpointAdministrationService.RegisteredEndpoint registered;
         try {
             registered = endpoints.register(tenant, request.name(), request.destinationUrl());
@@ -90,9 +98,9 @@ public class EndpointController {
 
     @PatchMapping("/{endpointId}")
     public EndpointResponse update(@RequestHeader(value = "X-Relay-Api-Key", required = false) String apiKey,
-                                   @PathVariable UUID endpointId, @RequestBody JsonNode body) {
+                                   @PathVariable UUID endpointId, HttpServletRequest httpRequest) throws IOException {
         TenantId tenant = authenticatedTenant(apiKey);
-        UpdateEndpointRequest request = updateRequest(body);
+        UpdateEndpointRequest request = updateRequest(readJsonObject(httpRequest));
         try {
             return endpoints.update(tenant, endpointId, request.name(), request.destinationUrl(), request.enabled())
                     .map(EndpointResponse::new).orElseThrow(EndpointNotFoundException::new);
@@ -113,6 +121,37 @@ public class EndpointController {
         TenantId tenant = apiKeys.authenticate(apiKey).orElseThrow(UnauthorizedException::new);
         if (!limits.allowRequest(tenant)) throw new RateLimitExceededException();
         return tenant;
+    }
+
+    private JsonNode readJsonObject(HttpServletRequest request) throws IOException {
+        String contentType = request.getContentType();
+        try {
+            if (contentType == null || !MediaType.APPLICATION_JSON.isCompatibleWith(MediaType.parseMediaType(contentType))) {
+                throw new EndpointUnsupportedContentTypeException();
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new EndpointUnsupportedContentTypeException();
+        }
+        long contentLength = request.getContentLengthLong();
+        if (contentLength > MAX_REQUEST_BYTES) throw new EndpointPayloadTooLargeException();
+        ByteArrayOutputStream body = new ByteArrayOutputStream(contentLength >= 0 ? (int) contentLength : 0);
+        byte[] buffer = new byte[8192];
+        InputStream input = request.getInputStream();
+        while (true) {
+            int read = input.read(buffer, 0, Math.min(buffer.length, MAX_REQUEST_BYTES + 1 - body.size()));
+            if (read == -1) break;
+            body.write(buffer, 0, read);
+            if (body.size() > MAX_REQUEST_BYTES) throw new EndpointPayloadTooLargeException();
+        }
+        try {
+            JsonNode parsed = objectMapper.readTree(body.toByteArray());
+            if (parsed == null || !parsed.isObject()) throw new EndpointInvalidRequestException();
+            return parsed;
+        } catch (EndpointInvalidRequestException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new EndpointInvalidRequestException();
+        }
     }
 
     private CreateEndpointRequest createRequest(JsonNode body) {
