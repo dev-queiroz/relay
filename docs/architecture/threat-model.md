@@ -22,3 +22,7 @@ No public endpoint registration or public dispatch is permitted until every cont
 ## Implemented destination gate
 
 Endpoint registration accepts only HTTPS URLs without credentials or fragments. Every DNS answer must be publicly routable; loopback, private, link-local, multicast, carrier-grade NAT, benchmark and IPv6 local ranges are rejected. The same DNS check runs again immediately before dispatch, and the HTTP client does not follow redirects. Deployment egress controls must still permit outbound HTTPS only to public Internet ranges: application validation is defence in depth, not a substitute for the network boundary.
+
+## Secret-handling rules
+
+Production configuration obtains database credentials and `RELAY_SECRETS_ENCRYPTION_KEY` from the runtime environment; there are no production fallbacks. The encryption key is a base64-encoded 32-byte AES key. Endpoint signing secrets are encrypted with AES-256-GCM before persistence and decrypted only for dispatch. API keys, signing secrets, authorization headers and payloads must not be logged. HTTP error responses use fixed safe messages and omit exception details and stack traces. CI scans the repository for committed secrets and rejects configuration credential defaults.

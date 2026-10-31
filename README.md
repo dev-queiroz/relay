@@ -62,6 +62,9 @@ On Windows PowerShell:
 $env:DB_URL = "jdbc:postgresql://localhost:5432/relay"
 $env:DB_USERNAME = "relay"
 $env:DB_PASSWORD = "relay"
+$env:POSTGRES_PASSWORD = "relay"
+$env:POSTGRES_USER = "relay"
+$env:RELAY_SECRETS_ENCRYPTION_KEY = "<base64-encoded 32-byte key>"
 ```
 
 On Linux or macOS:
@@ -70,6 +73,9 @@ On Linux or macOS:
 export DB_URL=jdbc:postgresql://localhost:5432/relay
 export DB_USERNAME=relay
 export DB_PASSWORD=relay
+export POSTGRES_PASSWORD=relay
+export POSTGRES_USER=relay
+export RELAY_SECRETS_ENCRYPTION_KEY='<base64-encoded 32-byte key>'
 ```
 
 If port 5432 is already in use, start Compose with `POSTGRES_PORT` set to an
