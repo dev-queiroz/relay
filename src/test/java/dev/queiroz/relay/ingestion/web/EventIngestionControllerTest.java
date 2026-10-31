@@ -5,6 +5,7 @@ import dev.queiroz.relay.ingestion.application.AcceptEventCommand;
 import dev.queiroz.relay.ingestion.application.EventAcceptanceService;
 import dev.queiroz.relay.ingestion.application.ApiKeyService;
 import dev.queiroz.relay.ingestion.application.TenantRateLimitService;
+import dev.queiroz.relay.operations.OperationalLog;
 import dev.queiroz.relay.ingestion.domain.TenantId;
 import org.junit.jupiter.api.BeforeEach;
 import dev.queiroz.relay.ingestion.application.IdempotencyConflictException;
@@ -41,6 +42,8 @@ class EventIngestionControllerTest {
     private ApiKeyService apiKeyService;
     @MockitoBean
     private TenantRateLimitService limits;
+    @MockitoBean
+    private OperationalLog operationalLog;
     @BeforeEach void authenticate() { given(apiKeyService.authenticate(any())).willReturn(java.util.Optional.of(new TenantId("local-test-tenant"))); given(limits.allowRequest(any())).willReturn(true); }
 
     @Test
