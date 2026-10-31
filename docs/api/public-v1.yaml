@@ -340,12 +340,16 @@ components:
         enabled: { type: boolean }
         createdAt: { type: string, format: date-time }
     EndpointCreated:
-      allOf:
-        - $ref: '#/components/schemas/Endpoint'
-        - type: object
-          required: [signingSecret]
-          properties:
-            signingSecret: { type: string, writeOnly: false, description: One-time response field }
+      type: object
+      required: [id, name, destinationUrl, enabled, createdAt, signingSecret]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        destinationUrl: { type: string, format: uri, pattern: '^https://' }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        signingSecret: { type: string, description: One-time response field, minLength: 1 }
     SigningSecret:
       type: object
       additionalProperties: false
