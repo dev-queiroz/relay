@@ -2,6 +2,8 @@ package dev.queiroz.relay.ingestion.application;
 
 import dev.queiroz.relay.ingestion.domain.Event;
 import dev.queiroz.relay.ingestion.domain.IdempotencyRecord;
+import dev.queiroz.relay.delivery.application.DeliveryStore;
+import dev.queiroz.relay.delivery.application.EndpointStore;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -14,15 +16,21 @@ public class EventAcceptanceService {
     private final EventStore eventStore;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
+    private final EndpointStore endpointStore;
+    private final DeliveryStore deliveryStore;
 
     public EventAcceptanceService(
             EventStore eventStore,
             TransactionTemplate transactionTemplate,
-            Clock clock
+            Clock clock,
+            EndpointStore endpointStore,
+            DeliveryStore deliveryStore
     ) {
         this.eventStore = eventStore;
         this.transactionTemplate = transactionTemplate;
         this.clock = clock;
+        this.endpointStore = endpointStore;
+        this.deliveryStore = deliveryStore;
     }
 
     public AcceptedEvent accept(AcceptEventCommand command) {
@@ -45,6 +53,7 @@ public class EventAcceptanceService {
 
         eventStore.insert(event);
         eventStore.insert(record);
+        endpointStore.enabledFor(command.tenantId()).forEach(endpoint -> deliveryStore.schedule(event, endpoint, clock));
         return new AcceptedEvent(event.id());
     }
 
