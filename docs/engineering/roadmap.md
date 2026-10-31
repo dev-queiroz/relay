@@ -9,7 +9,7 @@
 4. Implement atomic acceptance and idempotency under concurrency.
 5. Expose HTTP ingestion and verify contract.
 
-**M2 — Delivery (later):** endpoint configuration, durable delivery scheduling, HTTP worker, retries, recovery and dead-letter handling.
+**M2 — Delivery (active):** delivery schema, endpoint configuration, transactional scheduling, claims/leases, HTTP dispatcher and retries. See `docs/engineering/m2-delivery-plan.md` and ADR-0002. First implementation issue: #16.
 
 **M3 — Security (later):** API keys, authorization, HMAC signatures, SSRF and network egress protection, rate limiting.
 
