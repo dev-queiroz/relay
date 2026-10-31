@@ -60,6 +60,7 @@ public class EventIngestionController {
     ) throws IOException {
         requireJsonContentType(contentType);
         validateIdempotencyKey(idempotencyKey);
+        TenantId tenant = apiKeys.authenticate(apiKey).orElseThrow(UnauthorizedException::new);
         byte[] body = readLimitedBody(request);
 
         JsonNode eventRequest = parseObject(body);
@@ -72,7 +73,6 @@ public class EventIngestionController {
             throw new InvalidRequestException("payload is required");
         }
 
-        TenantId tenant = apiKeys.authenticate(apiKey).orElseThrow(UnauthorizedException::new);
         AcceptedEvent accepted = eventAcceptanceService.accept(new AcceptEventCommand(
                 tenant,
                 idempotencyKey,
