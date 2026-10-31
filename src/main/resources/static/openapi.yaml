@@ -49,6 +49,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '503':
@@ -100,6 +102,13 @@ components:
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     Unauthorized:
       description: API key is missing, expired, revoked, or invalid.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    RateLimited:
+      description: Tenant burst or quota limit was reached.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Seconds to wait before retrying.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     ServiceUnavailable:
       description: Storage transaction could not be confirmed.

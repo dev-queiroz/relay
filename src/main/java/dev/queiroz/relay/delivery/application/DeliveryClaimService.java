@@ -16,7 +16,7 @@ public class DeliveryClaimService {
   return tx.execute(s -> { var now=clock.instant();
    jdbc.update("UPDATE deliveries SET state = 'EXHAUSTED', lease_token = NULL, lease_expires_at = NULL, updated_at = ? WHERE state = 'IN_FLIGHT' AND lease_expires_at <= ? AND attempts_count >= 5", Timestamp.from(now), Timestamp.from(now));
    UUID token=UUID.randomUUID(); return jdbc.query("""
-   WITH due AS (SELECT id FROM deliveries WHERE attempts_count < 5 AND ((state IN ('PENDING','RETRY_WAIT') AND next_attempt_at <= ?) OR (state='IN_FLIGHT' AND lease_expires_at <= ?)) ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED LIMIT ?)
+   WITH due AS (SELECT id FROM deliveries d WHERE attempts_count < 5 AND ((state IN ('PENDING','RETRY_WAIT') AND next_attempt_at <= ?) OR (state='IN_FLIGHT' AND lease_expires_at <= ?)) AND NOT EXISTS (SELECT 1 FROM deliveries in_flight WHERE in_flight.endpoint_id=d.endpoint_id AND in_flight.id<>d.id AND in_flight.state='IN_FLIGHT') ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED LIMIT ?)
    UPDATE deliveries d SET state='IN_FLIGHT', lease_token=?, lease_expires_at=?, attempts_count=d.attempts_count+1, updated_at=? FROM due WHERE d.id=due.id
    RETURNING d.id, d.tenant_id, d.event_id, d.endpoint_id, d.destination_url, d.attempts_count
    """, (rs,row)->new ClaimedDelivery(rs.getObject("id",UUID.class),rs.getString("tenant_id"),rs.getObject("event_id",UUID.class),rs.getObject("endpoint_id",UUID.class),rs.getString("destination_url"),rs.getInt("attempts_count"),token), Timestamp.from(now),Timestamp.from(now),limit,token,Timestamp.from(now.plus(lease)),Timestamp.from(now)); });

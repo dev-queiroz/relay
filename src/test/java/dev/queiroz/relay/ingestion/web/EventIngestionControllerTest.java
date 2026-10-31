@@ -4,6 +4,7 @@ import dev.queiroz.relay.ingestion.application.AcceptedEvent;
 import dev.queiroz.relay.ingestion.application.AcceptEventCommand;
 import dev.queiroz.relay.ingestion.application.EventAcceptanceService;
 import dev.queiroz.relay.ingestion.application.ApiKeyService;
+import dev.queiroz.relay.ingestion.application.TenantRateLimitService;
 import dev.queiroz.relay.ingestion.domain.TenantId;
 import org.junit.jupiter.api.BeforeEach;
 import dev.queiroz.relay.ingestion.application.IdempotencyConflictException;
@@ -38,7 +39,9 @@ class EventIngestionControllerTest {
     private EventAcceptanceService eventAcceptanceService;
     @MockitoBean
     private ApiKeyService apiKeyService;
-    @BeforeEach void authenticate() { given(apiKeyService.authenticate(any())).willReturn(java.util.Optional.of(new TenantId("local-test-tenant"))); }
+    @MockitoBean
+    private TenantRateLimitService limits;
+    @BeforeEach void authenticate() { given(apiKeyService.authenticate(any())).willReturn(java.util.Optional.of(new TenantId("local-test-tenant"))); given(limits.allowRequest(any())).willReturn(true); }
 
     @Test
     void acceptsNewEventAndReturnsStableResponseContract() throws Exception {
@@ -128,6 +131,15 @@ class EventIngestionControllerTest {
         given(apiKeyService.authenticate(null)).willReturn(java.util.Optional.empty());
         mockMvc.perform(post("/v1/events").contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", KEY).content("{}"))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test void returnsSafe429WithRetryAfterWhenTenantBurstLimitIsReached() throws Exception {
+        given(limits.allowRequest(any())).willReturn(false);
+        mockMvc.perform(validRequest("{\"type\":\"payment.confirmed\",\"payload\":{}}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "60"))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.detail").value("Tenant request limit exceeded; retry after 60 seconds"));
     }
 
     @Test

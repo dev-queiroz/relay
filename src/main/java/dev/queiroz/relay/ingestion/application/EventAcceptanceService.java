@@ -18,19 +18,22 @@ public class EventAcceptanceService {
     private final Clock clock;
     private final EndpointStore endpointStore;
     private final DeliveryStore deliveryStore;
+    private final TenantRateLimitService limits;
 
     public EventAcceptanceService(
             EventStore eventStore,
             TransactionTemplate transactionTemplate,
             Clock clock,
             EndpointStore endpointStore,
-            DeliveryStore deliveryStore
+            DeliveryStore deliveryStore,
+            TenantRateLimitService limits
     ) {
         this.eventStore = eventStore;
         this.transactionTemplate = transactionTemplate;
         this.clock = clock;
         this.endpointStore = endpointStore;
         this.deliveryStore = deliveryStore;
+        this.limits = limits;
     }
 
     public AcceptedEvent accept(AcceptEventCommand command) {
@@ -42,6 +45,7 @@ public class EventAcceptanceService {
     }
 
     private AcceptedEvent createAcceptedEvent(AcceptEventCommand command) {
+        if (!limits.reserveDailyEvent(command.tenantId())) throw new RateLimitExceededException();
         Event event = Event.accept(command.tenantId(), command.type(), command.payload(), clock);
         IdempotencyRecord record = IdempotencyRecord.create(
                 command.tenantId(),
