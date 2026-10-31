@@ -12,12 +12,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -53,23 +56,18 @@ public class EventIngestionController {
     public ResponseEntity<AcceptedEventResponse> accept(
             @RequestHeader(value = HttpHeaders.CONTENT_TYPE, required = false) String contentType,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestBody(required = false) byte[] body
-    ) {
+            HttpServletRequest request
+    ) throws IOException {
         requireJsonContentType(contentType);
         validateIdempotencyKey(idempotencyKey);
-        if (body == null) {
-            throw new InvalidRequestException("request body is required");
-        }
-        if (body.length > MAX_REQUEST_BYTES) {
-            throw new PayloadTooLargeException();
-        }
+        byte[] body = readLimitedBody(request);
 
-        JsonNode request = parseObject(body);
-        JsonNode type = request.get("type");
+        JsonNode eventRequest = parseObject(body);
+        JsonNode type = eventRequest.get("type");
         if (type == null || !type.isTextual()) {
             throw new InvalidRequestException("type is required and must be a string");
         }
-        JsonNode payload = request.get("payload");
+        JsonNode payload = eventRequest.get("payload");
         if (payload == null) {
             throw new InvalidRequestException("payload is required");
         }
@@ -109,6 +107,30 @@ public class EventIngestionController {
         } catch (IllegalArgumentException exception) {
             throw new InvalidRequestException("Idempotency-Key must be a UUID");
         }
+    }
+
+    private byte[] readLimitedBody(HttpServletRequest request) throws IOException {
+        long contentLength = request.getContentLengthLong();
+        if (contentLength > MAX_REQUEST_BYTES) {
+            throw new PayloadTooLargeException();
+        }
+
+        ByteArrayOutputStream body = new ByteArrayOutputStream(
+                contentLength >= 0 ? (int) contentLength : 0
+        );
+        byte[] buffer = new byte[8192];
+        InputStream input = request.getInputStream();
+        while (true) {
+            int bytesRead = input.read(buffer, 0, Math.min(buffer.length, MAX_REQUEST_BYTES + 1 - body.size()));
+            if (bytesRead == -1) {
+                break;
+            }
+            body.write(buffer, 0, bytesRead);
+            if (body.size() > MAX_REQUEST_BYTES) {
+                throw new PayloadTooLargeException();
+            }
+        }
+        return body.toByteArray();
     }
 
     private JsonNode parseObject(byte[] body) {

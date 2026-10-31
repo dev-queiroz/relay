@@ -113,6 +113,12 @@ class EventIngestionControllerTest {
                 .andExpect(jsonPath("$.status").value(400));
     }
 
+    @Test
+    void preservesFrameworkMethodNotAllowedResponse() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/v1/events"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder validRequest(String body) {
         return post("/v1/events")
                 .header("Idempotency-Key", KEY)
