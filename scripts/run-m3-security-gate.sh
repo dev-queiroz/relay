@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-./mvnw --batch-mode test \
-  -Dtest=EventIngestionControllerTest,LocalTargetPolicyTest,HttpDeliveryDispatcherTest,WebhookSignatureTest,SecretProtectorTest,TenantRateLimitServiceIntegrationTest,DeliveryClaimServiceIntegrationTest
+./mvnw --batch-mode test -Dtest=EventIngestionControllerTest,LocalTargetPolicyTest,HttpDeliveryDispatcherTest,WebhookSignatureTest,SecretProtectorTest,TenantRateLimitServiceIntegrationTest,DeliveryClaimServiceIntegrationTest
 
 # These checks are intentionally independent of Java tests so configuration drift fails the gate.
 if rg -n --glob '!src/test/**' 'spring\.datasource\.(username|password)\s*=\s*\$\{[^}:]+:[^}]*\}' src/main/resources; then
