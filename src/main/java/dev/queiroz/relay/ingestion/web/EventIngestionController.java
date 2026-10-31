@@ -4,6 +4,8 @@ import dev.queiroz.relay.ingestion.application.AcceptEventCommand;
 import dev.queiroz.relay.ingestion.application.AcceptedEvent;
 import dev.queiroz.relay.ingestion.application.EventAcceptanceService;
 import dev.queiroz.relay.ingestion.application.ApiKeyService;
+import dev.queiroz.relay.ingestion.application.TenantRateLimitService;
+import dev.queiroz.relay.ingestion.application.RateLimitExceededException;
 import dev.queiroz.relay.ingestion.domain.EventPayload;
 import dev.queiroz.relay.ingestion.domain.EventType;
 import dev.queiroz.relay.ingestion.domain.TenantId;
@@ -41,14 +43,16 @@ public class EventIngestionController {
     private final EventAcceptanceService eventAcceptanceService;
     private final ObjectMapper objectMapper;
     private final ApiKeyService apiKeys;
+    private final TenantRateLimitService limits;
 
     public EventIngestionController(
             EventAcceptanceService eventAcceptanceService,
-            ObjectMapper objectMapper, ApiKeyService apiKeys
+            ObjectMapper objectMapper, ApiKeyService apiKeys, TenantRateLimitService limits
     ) {
         this.eventAcceptanceService = eventAcceptanceService;
         this.objectMapper = objectMapper;
         this.apiKeys = apiKeys;
+        this.limits = limits;
     }
 
     @PostMapping("/v1/events")
@@ -61,6 +65,7 @@ public class EventIngestionController {
         requireJsonContentType(contentType);
         validateIdempotencyKey(idempotencyKey);
         TenantId tenant = apiKeys.authenticate(apiKey).orElseThrow(UnauthorizedException::new);
+        if (!limits.allowRequest(tenant)) throw new RateLimitExceededException();
         byte[] body = readLimitedBody(request);
 
         JsonNode eventRequest = parseObject(body);
