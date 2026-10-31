@@ -1,0 +1,8 @@
+package dev.queiroz.relay.ingestion.application;
+import dev.queiroz.relay.ingestion.domain.TenantId; import org.springframework.jdbc.core.JdbcTemplate; import org.springframework.stereotype.Service; import java.nio.charset.StandardCharsets; import java.security.*; import java.time.*; import java.util.*;
+@Service public class ApiKeyService { private final JdbcTemplate jdbc; private final Clock clock; public ApiKeyService(JdbcTemplate jdbc,Clock clock){this.jdbc=jdbc;this.clock=clock;}
+ public String issue(TenantId tenant,Instant expires){String token=UUID.randomUUID()+"."+UUID.randomUUID();jdbc.update("INSERT INTO api_keys (id,tenant_id,key_hash,expires_at) VALUES (?,?,?,?)",UUID.randomUUID(),tenant.value(),hash(token),expires==null?null:java.sql.Timestamp.from(expires));return token;}
+ public Optional<TenantId> authenticate(String token){if(token==null)return Optional.empty(); var rows=jdbc.query("SELECT tenant_id,key_hash FROM api_keys WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)",(rs,n)->new String[]{rs.getString(1),rs.getString(2)}); byte[] actual=hash(token).getBytes(StandardCharsets.UTF_8); return rows.stream().filter(r->MessageDigest.isEqual(actual,r[1].getBytes(StandardCharsets.UTF_8))).map(r->new TenantId(r[0])).findFirst();}
+ public void revoke(String token){jdbc.update("UPDATE api_keys SET revoked_at=? WHERE key_hash=?",java.sql.Timestamp.from(clock.instant()),hash(token));}
+ private String hash(String v){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(v.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}}
+}

@@ -3,10 +3,10 @@ package dev.queiroz.relay.ingestion.web;
 import dev.queiroz.relay.ingestion.application.AcceptEventCommand;
 import dev.queiroz.relay.ingestion.application.AcceptedEvent;
 import dev.queiroz.relay.ingestion.application.EventAcceptanceService;
+import dev.queiroz.relay.ingestion.application.ApiKeyService;
 import dev.queiroz.relay.ingestion.domain.EventPayload;
 import dev.queiroz.relay.ingestion.domain.EventType;
 import dev.queiroz.relay.ingestion.domain.TenantId;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -40,26 +40,27 @@ public class EventIngestionController {
 
     private final EventAcceptanceService eventAcceptanceService;
     private final ObjectMapper objectMapper;
-    private final TenantId developmentTenant;
+    private final ApiKeyService apiKeys;
 
     public EventIngestionController(
             EventAcceptanceService eventAcceptanceService,
-            ObjectMapper objectMapper,
-            @Value("${relay.ingestion.development-tenant-id}") String developmentTenantId
+            ObjectMapper objectMapper, ApiKeyService apiKeys
     ) {
         this.eventAcceptanceService = eventAcceptanceService;
         this.objectMapper = objectMapper;
-        this.developmentTenant = new TenantId(developmentTenantId);
+        this.apiKeys = apiKeys;
     }
 
     @PostMapping("/v1/events")
     public ResponseEntity<AcceptedEventResponse> accept(
             @RequestHeader(value = HttpHeaders.CONTENT_TYPE, required = false) String contentType,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-Relay-Api-Key", required = false) String apiKey,
             HttpServletRequest request
     ) throws IOException {
         requireJsonContentType(contentType);
         validateIdempotencyKey(idempotencyKey);
+        TenantId tenant = apiKeys.authenticate(apiKey).orElseThrow(UnauthorizedException::new);
         byte[] body = readLimitedBody(request);
 
         JsonNode eventRequest = parseObject(body);
@@ -73,7 +74,7 @@ public class EventIngestionController {
         }
 
         AcceptedEvent accepted = eventAcceptanceService.accept(new AcceptEventCommand(
-                developmentTenant,
+                tenant,
                 idempotencyKey,
                 fingerprint(body),
                 new EventType(type.textValue()),

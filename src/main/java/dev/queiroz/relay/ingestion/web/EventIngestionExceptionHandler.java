@@ -24,6 +24,8 @@ public class EventIngestionExceptionHandler extends ResponseEntityExceptionHandl
     ProblemDetail unsupportedContentType() {
         return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", "Content-Type must be application/json");
     }
+    @ExceptionHandler(UnauthorizedException.class)
+    ProblemDetail unauthorized() { return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "A valid API key is required"); }
 
     @ExceptionHandler(PayloadTooLargeException.class)
     ProblemDetail payloadTooLarge() {

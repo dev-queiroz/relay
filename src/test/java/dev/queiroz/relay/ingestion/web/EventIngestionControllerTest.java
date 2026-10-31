@@ -3,6 +3,9 @@ package dev.queiroz.relay.ingestion.web;
 import dev.queiroz.relay.ingestion.application.AcceptedEvent;
 import dev.queiroz.relay.ingestion.application.AcceptEventCommand;
 import dev.queiroz.relay.ingestion.application.EventAcceptanceService;
+import dev.queiroz.relay.ingestion.application.ApiKeyService;
+import dev.queiroz.relay.ingestion.domain.TenantId;
+import org.junit.jupiter.api.BeforeEach;
 import dev.queiroz.relay.ingestion.application.IdempotencyConflictException;
 import dev.queiroz.relay.ingestion.domain.EventId;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,9 @@ class EventIngestionControllerTest {
 
     @MockitoBean
     private EventAcceptanceService eventAcceptanceService;
+    @MockitoBean
+    private ApiKeyService apiKeyService;
+    @BeforeEach void authenticate() { given(apiKeyService.authenticate(any())).willReturn(java.util.Optional.of(new TenantId("local-test-tenant"))); }
 
     @Test
     void acceptsNewEventAndReturnsStableResponseContract() throws Exception {
@@ -113,6 +119,12 @@ class EventIngestionControllerTest {
                 .andExpect(jsonPath("$.status").value(400));
     }
 
+    @Test void rejectsMissingApiKey() throws Exception {
+        given(apiKeyService.authenticate(null)).willReturn(java.util.Optional.empty());
+        mockMvc.perform(post("/v1/events").contentType(MediaType.APPLICATION_JSON).header("Idempotency-Key", KEY).content("{}"))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.status").value(401));
+    }
+
     @Test
     void preservesFrameworkMethodNotAllowedResponse() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/v1/events"))
@@ -122,6 +134,7 @@ class EventIngestionControllerTest {
     private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder validRequest(String body) {
         return post("/v1/events")
                 .header("Idempotency-Key", KEY)
+                .header("X-Relay-Api-Key", "test-key")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
     }
