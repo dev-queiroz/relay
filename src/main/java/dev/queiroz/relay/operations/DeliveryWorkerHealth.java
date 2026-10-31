@@ -9,7 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
-@Component("deliveryWorker")
+@Component("deliveryWorkerHealth")
 public class DeliveryWorkerHealth implements HealthIndicator {
     private final Clock clock;
     private final Duration staleAfter;
