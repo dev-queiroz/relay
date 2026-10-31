@@ -16,13 +16,17 @@ import java.util.UUID;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {
-    public static final String HEADER = "X-Relay-Request-Id";
+    public static final String HEADER = "X-Request-Id";
+    public static final String LEGACY_HEADER = "X-Relay-Request-Id";
     public static final String MDC_KEY = "requestId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
-        String requestId = validUuid(request.getHeader(HEADER)) ? request.getHeader(HEADER) : UUID.randomUUID().toString();
+        String supplied = request.getHeader(HEADER);
+        if (!validUuid(supplied)) supplied = request.getHeader(LEGACY_HEADER);
+        String requestId = validUuid(supplied) ? supplied : UUID.randomUUID().toString();
         response.setHeader(HEADER, requestId);
+        response.setHeader(LEGACY_HEADER, requestId);
         try (MDC.MDCCloseable ignored = MDC.putCloseable(MDC_KEY, requestId)) {
             chain.doFilter(request, response);
         }

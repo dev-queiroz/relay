@@ -2,6 +2,9 @@ package dev.queiroz.relay.ingestion.web;
 
 import dev.queiroz.relay.ingestion.application.IdempotencyConflictException;
 import dev.queiroz.relay.ingestion.application.RateLimitExceededException;
+import dev.queiroz.relay.api.pagination.InvalidCursorException;
+import dev.queiroz.relay.delivery.web.EndpointInvalidRequestException;
+import dev.queiroz.relay.delivery.web.EndpointNotFoundException;
 import dev.queiroz.relay.ingestion.domain.InvalidEventException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -21,6 +24,16 @@ public class EventIngestionExceptionHandler extends ResponseEntityExceptionHandl
     @ExceptionHandler({InvalidRequestException.class, InvalidEventException.class})
     ProblemDetail invalidRequest(RuntimeException exception) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid event request", exception.getMessage());
+    }
+
+    @ExceptionHandler({EndpointInvalidRequestException.class, InvalidCursorException.class})
+    ProblemDetail invalidEndpointRequest() {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid endpoint request", "The endpoint request is invalid");
+    }
+
+    @ExceptionHandler(EndpointNotFoundException.class)
+    ProblemDetail endpointNotFound() {
+        return problem(HttpStatus.NOT_FOUND, "Not found", "The endpoint was not found");
     }
 
     @ExceptionHandler(UnsupportedContentTypeException.class)
