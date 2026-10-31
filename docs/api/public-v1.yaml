@@ -1,0 +1,505 @@
+openapi: 3.1.0
+info:
+  title: Relay Public API
+  version: 1.0.0-design
+  description: >
+    M5 proposed public API contract. Only POST /v1/events was implemented
+    before M5. Other operations are designs for issues #47/#48, not live.
+    All resources are scoped to the tenant resolved from X-Relay-Api-Key.
+servers:
+  - url: /
+    description: Current deployment origin; no public host announced
+security:
+  - RelayApiKey: []
+tags:
+  - name: Ingestion
+  - name: Endpoints
+  - name: Events
+  - name: Deliveries
+paths:
+  /v1/events:
+    post:
+      tags: [Ingestion]
+      operationId: acceptEvent
+      summary: Durably accept an event
+      description: >
+        Existing M1 operation. 202 follows PostgreSQL commit. Repeating the
+        same Idempotency-Key with identical raw request body returns the
+        original event ID; changing body bytes with the same key returns 409.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid, maxLength: 64 }
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IngestEventRequest' }
+      responses:
+        '202':
+          description: Event and idempotency mapping committed
+          headers:
+            Location:
+              description: Planned event resource path
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptedEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    get:
+      tags: [Events]
+      operationId: listEvents
+      summary: List event summaries for the authenticated tenant
+      x-relay-implementation: planned-issue-48
+      parameters:
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageCursor'
+      responses:
+        '200':
+          description: Newest first by createdAt and ID
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/events/{eventId}:
+    get:
+      tags: [Events]
+      operationId: getEvent
+      summary: Get event metadata without payload
+      x-relay-implementation: planned-issue-48
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event belongs to authenticated tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/events/{eventId}/deliveries:
+    get:
+      tags: [Deliveries]
+      operationId: listEventDeliveries
+      summary: List deliveries for an event
+      x-relay-implementation: planned-issue-48
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageCursor'
+      responses:
+        '200':
+          description: Tenant-scoped deliveries, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/deliveries/{deliveryId}:
+    get:
+      tags: [Deliveries]
+      operationId: getDelivery
+      summary: Get delivery state and metadata
+      x-relay-implementation: planned-issue-48
+      parameters:
+        - $ref: '#/components/parameters/DeliveryId'
+      responses:
+        '200':
+          description: Tenant-owned delivery
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliverySummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/deliveries/{deliveryId}/attempts:
+    get:
+      tags: [Deliveries]
+      operationId: listDeliveryAttempts
+      summary: List sanitized attempts for a delivery
+      x-relay-implementation: planned-issue-48
+      parameters:
+        - $ref: '#/components/parameters/DeliveryId'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageCursor'
+      responses:
+        '200':
+          description: Attempts sorted by sequenceNumber ascending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttemptPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/endpoints:
+    post:
+      tags: [Endpoints]
+      operationId: createEndpoint
+      summary: Create an endpoint and obtain its signing secret once
+      x-relay-implementation: planned-issue-47
+      description: >
+        Reject non-HTTPS, unsafe or nonpublic destinations. The signing
+        secret is returned only during creation or explicit rotation.
+        Never log or cache this response. This operation has no implicit
+        idempotent-retry guarantee.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEndpointRequest' }
+      responses:
+        '201':
+          description: Endpoint created and secret issued once
+          headers:
+            Location:
+              schema: { type: string }
+              description: /v1/endpoints/{endpointId}
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EndpointCreated' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    get:
+      tags: [Endpoints]
+      operationId: listEndpoints
+      summary: List endpoint metadata, excluding signing secrets
+      x-relay-implementation: planned-issue-47
+      parameters:
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageCursor'
+      responses:
+        '200':
+          description: Tenant-owned endpoints in newest-first order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EndpointPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/endpoints/{endpointId}:
+    get:
+      tags: [Endpoints]
+      operationId: getEndpoint
+      summary: Read endpoint metadata
+      x-relay-implementation: planned-issue-47
+      parameters:
+        - $ref: '#/components/parameters/EndpointId'
+      responses:
+        '200':
+          description: Tenant-owned endpoint
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Endpoint' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+    patch:
+      tags: [Endpoints]
+      operationId: updateEndpoint
+      summary: Update endpoint metadata and/or enabled state
+      x-relay-implementation: planned-issue-47
+      description: >
+        At least one writable field required. Existing deliveries keep their
+        immutable destination snapshot. Disabling stops new scheduling only.
+      parameters:
+        - $ref: '#/components/parameters/EndpointId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEndpointRequest' }
+      responses:
+        '200':
+          description: Updated endpoint metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Endpoint' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /v1/endpoints/{endpointId}/signing-secret/rotate:
+    post:
+      tags: [Endpoints]
+      operationId: rotateEndpointSigningSecret
+      summary: Rotate signing secret and return its new value once
+      x-relay-implementation: planned-issue-47
+      description: >
+        Previous secret is retired immediately. This operation is not
+        idempotent, and a lost response requires another explicit rotation.
+      parameters:
+        - $ref: '#/components/parameters/EndpointId'
+      responses:
+        '200':
+          description: New signing secret; immediately retired predecessor
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SigningSecret' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+components:
+  securitySchemes:
+    RelayApiKey:
+      type: apiKey
+      in: header
+      name: X-Relay-Api-Key
+      description: Tenant-scoped API key; no public API-key scope model in v1
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Optional UUID correlation ID
+      schema: { type: string, format: uuid }
+    EndpointId:
+      name: endpointId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DeliveryId:
+      name: deliveryId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PageLimit:
+      name: limit
+      in: query
+      required: false
+      description: Defaults to 20; maximum 100
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    PageCursor:
+      name: cursor
+      in: query
+      required: false
+      description: >
+        Opaque, tenant/route/filter-bound, tamper-evident 24-hour cursor.
+        Never inspect or modify client-side.
+      schema: { type: string, minLength: 1 }
+  schemas:
+    IngestEventRequest:
+      type: object
+      required: [type, payload]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._-]+$'
+        payload: { type: object }
+    AcceptedEvent:
+      type: object
+      required: [eventId, status]
+      additionalProperties: false
+      properties:
+        eventId: { type: string, format: uuid }
+        status: { type: string, const: accepted }
+    Endpoint:
+      type: object
+      required: [id, name, destinationUrl, enabled, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        destinationUrl: { type: string, format: uri, pattern: '^https://' }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    EndpointCreated:
+      allOf:
+        - $ref: '#/components/schemas/Endpoint'
+        - type: object
+          required: [signingSecret]
+          properties:
+            signingSecret: { type: string, writeOnly: false, description: One-time response field }
+    SigningSecret:
+      type: object
+      additionalProperties: false
+      required: [signingSecret]
+      properties:
+        signingSecret: { type: string, description: One-time response field }
+    CreateEndpointRequest:
+      type: object
+      required: [name, destinationUrl]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 128 }
+        destinationUrl: { type: string, format: uri, pattern: '^https://' }
+    UpdateEndpointRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 128 }
+        destinationUrl: { type: string, format: uri, pattern: '^https://' }
+        enabled: { type: boolean }
+    EventSummary:
+      type: object
+      required: [id, type, status, createdAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        status: { type: string, const: ACCEPTED }
+        createdAt: { type: string, format: date-time }
+    DeliverySummary:
+      type: object
+      required: [id, eventId, endpointId, state, attemptsCount, createdAt, updatedAt, nextAttemptAt]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        eventId: { type: string, format: uuid }
+        endpointId: { type: string, format: uuid }
+        state:
+          type: string
+          enum: [PENDING, IN_FLIGHT, RETRY_WAIT, SUCCEEDED, EXHAUSTED]
+        attemptsCount: { type: integer, minimum: 0, maximum: 5 }
+        nextAttemptAt:
+          type: [string, 'null']
+          format: date-time
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AttemptSummary:
+      type: object
+      required: [id, deliveryId, sequenceNumber, startedAt, finishedAt, outcome, responseStatus, sanitizedErrorCode]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        deliveryId: { type: string, format: uuid }
+        sequenceNumber: { type: integer, minimum: 1, maximum: 5 }
+        startedAt: { type: string, format: date-time }
+        finishedAt:
+          type: [string, 'null']
+          format: date-time
+        outcome:
+          type: [string, 'null']
+          enum: [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE, null]
+        responseStatus:
+          type: [integer, 'null']
+          minimum: 100
+          maximum: 599
+        sanitizedErrorCode:
+          type: [string, 'null']
+    Page:
+      type: object
+      required: [hasMore, nextCursor]
+      additionalProperties: false
+      properties:
+        hasMore: { type: boolean }
+        nextCursor: { type: [string, 'null'] }
+    EndpointPage:
+      type: object
+      required: [data, page]
+      additionalProperties: false
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Endpoint' } }
+        page: { $ref: '#/components/schemas/Page' }
+    EventPage:
+      type: object
+      required: [data, page]
+      additionalProperties: false
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EventSummary' } }
+        page: { $ref: '#/components/schemas/Page' }
+    DeliveryPage:
+      type: object
+      required: [data, page]
+      additionalProperties: false
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/DeliverySummary' } }
+        page: { $ref: '#/components/schemas/Page' }
+    AttemptPage:
+      type: object
+      required: [data, page]
+      additionalProperties: false
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AttemptSummary' } }
+        page: { $ref: '#/components/schemas/Page' }
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+      additionalProperties: true
+  responses:
+    BadRequest:
+      description: Malformed request, UUID, cursor, or query
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Invalid or missing tenant API key
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Resource missing or does not belong to authenticated tenant
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Resource or idempotency conflict
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooLarge:
+      description: Request body exceeds 64 KiB on event ingestion
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnsupportedMedia:
+      description: Unsupported media type
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Tenant has exceeded its configured request limit
+      headers:
+        Retry-After:
+          schema: { type: string }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unavailable:
+      description: Dependency or storage temporarily unavailable
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
