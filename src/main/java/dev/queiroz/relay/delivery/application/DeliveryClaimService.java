@@ -6,13 +6,15 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.*;
+import dev.queiroz.relay.operations.DeliveryWorkerHealth;
 
 @Service
 public class DeliveryClaimService {
- private final JdbcTemplate jdbc; private final TransactionTemplate tx; private final Clock clock;
- public DeliveryClaimService(JdbcTemplate jdbc, TransactionTemplate tx, Clock clock) { this.jdbc=jdbc; this.tx=tx; this.clock=clock; }
+ private final JdbcTemplate jdbc; private final TransactionTemplate tx; private final Clock clock; private final DeliveryWorkerHealth workerHealth;
+ public DeliveryClaimService(JdbcTemplate jdbc, TransactionTemplate tx, Clock clock, DeliveryWorkerHealth workerHealth) { this.jdbc=jdbc; this.tx=tx; this.clock=clock; this.workerHealth=workerHealth; }
  public List<ClaimedDelivery> claimDue(int limit, Duration lease) {
   if (limit < 1 || limit > 100 || lease.isNegative() || lease.isZero()) throw new IllegalArgumentException("invalid claim bounds");
+  workerHealth.heartbeat();
   return tx.execute(s -> { var now=clock.instant();
    jdbc.update("UPDATE deliveries SET state = 'EXHAUSTED', lease_token = NULL, lease_expires_at = NULL, updated_at = ? WHERE state = 'IN_FLIGHT' AND lease_expires_at <= ? AND attempts_count >= 5", Timestamp.from(now), Timestamp.from(now));
    UUID token=UUID.randomUUID(); return jdbc.query("""
