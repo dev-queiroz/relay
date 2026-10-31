@@ -21,10 +21,13 @@ class HttpDeliveryDispatcherTest {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         LocalTargetPolicy policy = new LocalTargetPolicy(host -> new InetAddress[]{InetAddress.getByName("169.254.169.254")});
         EndpointSigningKeyStore keys = mock(EndpointSigningKeyStore.class);
-        HttpDeliveryDispatcher dispatcher = new HttpDeliveryDispatcher(jdbc, policy, keys, new WebhookSignature(Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)), mock(OperationalLog.class), mock(DeliveryMetrics.class));
+        DeliveryMetrics metrics = mock(DeliveryMetrics.class);
+        HttpDeliveryDispatcher dispatcher = new HttpDeliveryDispatcher(jdbc, policy, keys, new WebhookSignature(Clock.fixed(Instant.EPOCH, ZoneOffset.UTC)), mock(OperationalLog.class), metrics);
         ClaimedDelivery delivery = new ClaimedDelivery(UUID.randomUUID(), "tenant-a", UUID.randomUUID(), UUID.randomUUID(), "https://rebind.example.test/hook", 1, UUID.randomUUID());
 
         assertThrows(IllegalArgumentException.class, () -> dispatcher.dispatch(delivery));
         verifyNoInteractions(jdbc, keys);
+        org.mockito.Mockito.verify(metrics).attemptStarted();
+        org.mockito.Mockito.verify(metrics).deliveryFailed();
     }
 }

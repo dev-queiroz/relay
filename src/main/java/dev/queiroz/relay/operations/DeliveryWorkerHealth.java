@@ -13,15 +13,18 @@ import java.time.Instant;
 public class DeliveryWorkerHealth implements HealthIndicator {
     private final Clock clock;
     private final Duration staleAfter;
+    private final boolean required;
     private volatile Instant lastHeartbeat;
 
-    public DeliveryWorkerHealth(Clock clock, @Value("${relay.worker.health-stale-after:PT1M}") Duration staleAfter) {
-        this.clock = clock; this.staleAfter = staleAfter;
+    public DeliveryWorkerHealth(Clock clock, @Value("${relay.worker.health-stale-after:PT1M}") Duration staleAfter,
+                                @Value("${relay.worker.health-required:false}") boolean required) {
+        this.clock = clock; this.staleAfter = staleAfter; this.required = required;
     }
 
     public void heartbeat() { lastHeartbeat = clock.instant(); }
 
     @Override public Health health() {
+        if (!required) return Health.up().withDetail("workerHealth", "disabled until a production claim loop is configured").build();
         Instant heartbeat = lastHeartbeat;
         if (heartbeat == null) return Health.outOfService().withDetail("reason", "worker has not claimed work yet").build();
         long age = Duration.between(heartbeat, clock.instant()).toSeconds();
