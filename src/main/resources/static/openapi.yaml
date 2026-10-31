@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Relay Event Ingestion API
   version: 0.1.0
-  description: Local development event ingestion. Authentication and public multi-tenancy are not implemented.
+  description: Tenant-scoped event ingestion authenticated by an API key.
 paths:
   /v1/events:
     post:
@@ -10,6 +10,11 @@ paths:
       summary: Durably accept an event
       description: Returns only after the event and idempotency record commit atomically. A status route is not implemented in this version.
       parameters:
+        - name: X-Relay-Api-Key
+          in: header
+          required: true
+          schema:
+            type: string
         - name: Idempotency-Key
           in: header
           required: true
@@ -44,6 +49,8 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 components:
@@ -90,6 +97,9 @@ components:
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     UnsupportedMediaType:
       description: Content-Type is not application/json.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthorized:
+      description: API key is missing, expired, revoked, or invalid.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     ServiceUnavailable:
       description: Storage transaction could not be confirmed.

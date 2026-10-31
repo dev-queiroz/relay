@@ -18,3 +18,7 @@ Clients, endpoint URLs, event payloads, API keys, HTTP responses, DNS answers an
 ## Release gate
 
 No public endpoint registration or public dispatch is permitted until every control above has automated evidence. M2's local allowlist is not an SSRF defence and must not be used as a production security claim.
+
+## Implemented destination gate
+
+Endpoint registration accepts only HTTPS URLs without credentials or fragments. Every DNS answer must be publicly routable; loopback, private, link-local, multicast, carrier-grade NAT, benchmark and IPv6 local ranges are rejected. The same DNS check runs again immediately before dispatch, and the HTTP client does not follow redirects. Deployment egress controls must still permit outbound HTTPS only to public Internet ranges: application validation is defence in depth, not a substitute for the network boundary.
