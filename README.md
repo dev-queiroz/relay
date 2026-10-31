@@ -95,6 +95,11 @@ On Linux or macOS:
 
 The application starts at `http://localhost:8080`.
 
+The delivery worker is disabled by default so that an API-only deployment does not
+claim deliveries. Enable it in the worker deployment with
+`RELAY_WORKER_ENABLED=true`; set `RELAY_WORKER_HEALTH_REQUIRED=true` there when
+readiness should require a recent worker heartbeat.
+
 ### Health Check
 
 Once the application is running:
