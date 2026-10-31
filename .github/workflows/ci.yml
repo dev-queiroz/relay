@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: ['**']
 
 permissions:
   contents: read
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Scan for committed secrets
         uses: gitleaks/gitleaks-action@v2
@@ -43,3 +45,20 @@ jobs:
 
       - name: Build and test
         run: ./mvnw --batch-mode verify
+
+  m3-security-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Run M3 adversarial security gate
+        run: ./scripts/run-m3-security-gate.sh
