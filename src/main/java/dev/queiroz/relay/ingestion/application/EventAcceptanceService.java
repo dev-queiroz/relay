@@ -5,6 +5,7 @@ import dev.queiroz.relay.ingestion.domain.IdempotencyRecord;
 import dev.queiroz.relay.delivery.application.DeliveryStore;
 import dev.queiroz.relay.delivery.application.EndpointStore;
 import dev.queiroz.relay.operations.DeliveryMetrics;
+import dev.queiroz.relay.operations.RelayTracing;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -21,6 +22,7 @@ public class EventAcceptanceService {
     private final DeliveryStore deliveryStore;
     private final TenantRateLimitService limits;
     private final DeliveryMetrics metrics;
+    private final RelayTracing tracing;
 
     public EventAcceptanceService(
             EventStore eventStore,
@@ -29,7 +31,8 @@ public class EventAcceptanceService {
             EndpointStore endpointStore,
             DeliveryStore deliveryStore,
             TenantRateLimitService limits,
-            DeliveryMetrics metrics
+            DeliveryMetrics metrics,
+            RelayTracing tracing
     ) {
         this.eventStore = eventStore;
         this.transactionTemplate = transactionTemplate;
@@ -38,9 +41,14 @@ public class EventAcceptanceService {
         this.deliveryStore = deliveryStore;
         this.limits = limits;
         this.metrics = metrics;
+        this.tracing = tracing;
     }
 
     public AcceptedEvent accept(AcceptEventCommand command) {
+        return tracing.trace("relay.event.accept", command.tenantId().value(), null, () -> acceptTraced(command));
+    }
+
+    private AcceptedEvent acceptTraced(AcceptEventCommand command) {
         try {
             return transactionTemplate.execute(status -> createAcceptedEvent(command));
         } catch (DataIntegrityViolationException exception) {
