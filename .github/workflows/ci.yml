@@ -20,11 +20,19 @@ jobs:
 
       - name: Scan for committed secrets
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check production configuration has no credential defaults
         run: |
-          ! rg -n 'spring\.datasource\.(username|password)=.*:-' src/main/resources
-          ! rg -n 'RELAY_SECRETS_ENCRYPTION_KEY.*:-' src/main/resources
+          if rg -n 'spring\.datasource\.(username|password)\s*=\s*\$\{[^}:]+:[^}]*\}' src/main/resources; then
+            echo 'Production datasource credentials must not define Spring placeholder defaults.' >&2
+            exit 1
+          fi
+          if rg -n 'relay\.secrets\.encryption-key\s*=\s*\$\{[^}:]+:[^}]*\}' src/main/resources; then
+            echo 'The encryption key must not define a Spring placeholder default.' >&2
+            exit 1
+          fi
 
       - name: Set up Java 25
         uses: actions/setup-java@v6
