@@ -53,16 +53,21 @@ class EventIngestionControllerTest {
     }
 
     @Test
-    void usesConfiguredDevelopmentTenantInsteadOfRequestTenantHeaders() throws Exception {
+    void derivesTenantFromTheApiKeyAndNeverFromRequestTenantHeaders() throws Exception {
         given(eventAcceptanceService.accept(any())).willReturn(new AcceptedEvent(new EventId(UUID.randomUUID())));
+        given(apiKeyService.authenticate("tenant-a-key")).willReturn(java.util.Optional.of(new TenantId("tenant-a")));
 
-        mockMvc.perform(validRequest("{\"type\":\"payment.confirmed\",\"payload\":{}}")
+        mockMvc.perform(post("/v1/events")
+                        .header("Idempotency-Key", KEY)
+                        .header("X-Relay-Api-Key", "tenant-a-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"payment.confirmed\",\"payload\":{}}")
                         .header("X-Tenant-Id", "spoofed-tenant"))
                 .andExpect(status().isAccepted());
 
         org.mockito.ArgumentCaptor<AcceptEventCommand> command = org.mockito.ArgumentCaptor.forClass(AcceptEventCommand.class);
         verify(eventAcceptanceService).accept(command.capture());
-        org.junit.jupiter.api.Assertions.assertEquals("local-test-tenant", command.getValue().tenantId().value());
+        org.junit.jupiter.api.Assertions.assertEquals("tenant-a", command.getValue().tenantId().value());
     }
 
     @Test

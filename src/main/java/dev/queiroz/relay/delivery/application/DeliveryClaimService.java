@@ -18,8 +18,8 @@ public class DeliveryClaimService {
    UUID token=UUID.randomUUID(); return jdbc.query("""
    WITH due AS (SELECT id FROM deliveries WHERE attempts_count < 5 AND ((state IN ('PENDING','RETRY_WAIT') AND next_attempt_at <= ?) OR (state='IN_FLIGHT' AND lease_expires_at <= ?)) ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED LIMIT ?)
    UPDATE deliveries d SET state='IN_FLIGHT', lease_token=?, lease_expires_at=?, attempts_count=d.attempts_count+1, updated_at=? FROM due WHERE d.id=due.id
-   RETURNING d.id, d.event_id, d.destination_url, d.attempts_count
-   """, (rs,row)->new ClaimedDelivery(rs.getObject("id",UUID.class),rs.getObject("event_id",UUID.class),rs.getString("destination_url"),rs.getInt("attempts_count"),token), Timestamp.from(now),Timestamp.from(now),limit,token,Timestamp.from(now.plus(lease)),Timestamp.from(now)); });
+   RETURNING d.id, d.tenant_id, d.event_id, d.destination_url, d.attempts_count
+   """, (rs,row)->new ClaimedDelivery(rs.getObject("id",UUID.class),rs.getString("tenant_id"),rs.getObject("event_id",UUID.class),rs.getString("destination_url"),rs.getInt("attempts_count"),token), Timestamp.from(now),Timestamp.from(now),limit,token,Timestamp.from(now.plus(lease)),Timestamp.from(now)); });
  }
  public boolean finalize(UUID id, UUID token, String state, java.time.Instant next) {
   if (!Set.of("SUCCEEDED","RETRY_WAIT","EXHAUSTED").contains(state)) throw new IllegalArgumentException("invalid final state");
