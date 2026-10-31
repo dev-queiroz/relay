@@ -26,3 +26,5 @@ Endpoint registration accepts only HTTPS URLs without credentials or fragments. 
 ## Secret-handling rules
 
 Production configuration obtains database credentials and `RELAY_SECRETS_ENCRYPTION_KEY` from the runtime environment; there are no production fallbacks. The encryption key is a base64-encoded 32-byte AES key. Endpoint signing secrets are encrypted with AES-256-GCM before persistence and decrypted only for dispatch. API keys, signing secrets, authorization headers and payloads must not be logged. HTTP error responses use fixed safe messages and omit exception details and stack traces. CI scans the repository for committed secrets and rejects configuration credential defaults.
+
+Operational logs use structured JSON and may include only the request, tenant, event, delivery and response-status correlation fields. An incoming request ID is accepted only when it is a UUID; otherwise Relay creates one. Payloads, destinations, credentials, headers, raw exceptions, and signing material are prohibited from operational log fields.
