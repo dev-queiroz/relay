@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Relay Event Ingestion API
+  version: 0.1.0
+  description: Local development event ingestion. Authentication and public multi-tenancy are not implemented.
+paths:
+  /v1/events:
+    post:
+      operationId: acceptEvent
+      summary: Durably accept an event
+      description: Returns only after the event and idempotency record commit atomically. A status route is not implemented in this version.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+            maxLength: 64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '202':
+          description: Event accepted; identical retries return the same event ID.
+          headers:
+            Location:
+              description: Reference to the future event status resource; this route is not yet implemented.
+              schema:
+                type: string
+                example: /v1/events/550e8400-e29b-41d4-a716-446655440000
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  schemas:
+    EventRequest:
+      type: object
+      required: [type, payload]
+      properties:
+        type:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._-]+$'
+        payload:
+          type: object
+          additionalProperties: true
+    AcceptedEvent:
+      type: object
+      required: [eventId, status]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: accepted
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid event request.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    IdempotencyConflict:
+      description: Idempotency key was used with a different request.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    PayloadTooLarge:
+      description: Request exceeds 64 KiB.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    UnsupportedMediaType:
+      description: Content-Type is not application/json.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    ServiceUnavailable:
+      description: Storage transaction could not be confirmed.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
