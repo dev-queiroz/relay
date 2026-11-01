@@ -66,7 +66,7 @@ public class CursorCodec {
             String payload = new String(DECODER.decode(parts[0]), StandardCharsets.UTF_8);
             if (!MessageDigest.isEqual(sign(payload), DECODER.decode(parts[1]))) throw new IllegalArgumentException();
             String[] fields = payload.split("\\|", -1);
-            if (fields.length != 8 || !"v1".equals(fields[0]) || !route.equals(fields[1]) || !"attempt".equals(fields[3])) throw new IllegalArgumentException();
+            if (fields.length != 7 || !"v1".equals(fields[0]) || !route.equals(fields[1]) || !"attempt".equals(fields[3])) throw new IllegalArgumentException();
             if (!tenant.value().equals(new String(DECODER.decode(fields[2]), StandardCharsets.UTF_8)) || !Instant.ofEpochSecond(Long.parseLong(fields[7])).isAfter(clock.instant())) throw new IllegalArgumentException();
             return new AttemptCursor(Integer.parseInt(fields[4]), UUID.fromString(fields[5]));
         } catch (RuntimeException exception) { throw new InvalidCursorException(); }
