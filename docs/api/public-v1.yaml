@@ -3,8 +3,8 @@ info:
   title: Relay Public API
   version: 1.0.0-design
   description: >
-    M5 proposed public API contract. Only POST /v1/events was implemented
-    before M5. Other operations are designs for issues #47/#48, not live.
+    M5 public API contract. POST /v1/events and endpoint management are
+    implemented. Event and delivery status operations remain designs for #48.
     All resources are scoped to the tenant resolved from X-Relay-Api-Key.
 servers:
   - url: /
@@ -153,7 +153,7 @@ paths:
       tags: [Endpoints]
       operationId: createEndpoint
       summary: Create an endpoint and obtain its signing secret once
-      x-relay-implementation: planned-issue-47
+      x-relay-implementation: implemented-issue-47
       description: >
         Reject non-HTTPS, unsafe or nonpublic destinations. The signing
         secret is returned only during creation or explicit rotation.
@@ -184,7 +184,7 @@ paths:
       tags: [Endpoints]
       operationId: listEndpoints
       summary: List endpoint metadata, excluding signing secrets
-      x-relay-implementation: planned-issue-47
+      x-relay-implementation: implemented-issue-47
       parameters:
         - $ref: '#/components/parameters/PageLimit'
         - $ref: '#/components/parameters/PageCursor'
@@ -203,7 +203,7 @@ paths:
       tags: [Endpoints]
       operationId: getEndpoint
       summary: Read endpoint metadata
-      x-relay-implementation: planned-issue-47
+      x-relay-implementation: implemented-issue-47
       parameters:
         - $ref: '#/components/parameters/EndpointId'
       responses:
@@ -220,7 +220,7 @@ paths:
       tags: [Endpoints]
       operationId: updateEndpoint
       summary: Update endpoint metadata and/or enabled state
-      x-relay-implementation: planned-issue-47
+      x-relay-implementation: implemented-issue-47
       description: >
         At least one writable field required. Existing deliveries keep their
         immutable destination snapshot. Disabling stops new scheduling only.
@@ -247,7 +247,7 @@ paths:
       tags: [Endpoints]
       operationId: rotateEndpointSigningSecret
       summary: Rotate signing secret and return its new value once
-      x-relay-implementation: planned-issue-47
+      x-relay-implementation: implemented-issue-47
       description: >
         Previous secret is retired immediately. This operation is not
         idempotent, and a lost response requires another explicit rotation.
