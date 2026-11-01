@@ -30,6 +30,8 @@ These milestones are tentative, not release commitments.
 
 ## Development
 
+See [the reproducible developer quickstart](docs/engineering/quickstart.md) for API authentication, endpoints, delivery verification, retries and status inspection.
+
 ### Prerequisites
 
 - Java 25 (JDK)
