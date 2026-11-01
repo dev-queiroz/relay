@@ -36,4 +36,13 @@ class CursorCodecTest {
 
         assertThrows(InvalidCursorException.class, () -> expired.decode(token, "v1/endpoints", new TenantId("tenant-a")));
     }
+
+    @Test
+    void protectsAttemptOrderingCursorToo() {
+        CursorCodec codec = new CursorCodec(KEY, Clock.fixed(NOW, ZoneOffset.UTC));
+        AttemptCursor cursor = new AttemptCursor(2, UUID.randomUUID());
+        String token = codec.encodeAttempt("v1/deliveries/a/attempts", new TenantId("tenant-a"), cursor);
+        assertEquals(cursor, codec.decodeAttempt(token, "v1/deliveries/a/attempts", new TenantId("tenant-a")));
+        assertThrows(InvalidCursorException.class, () -> codec.decodeAttempt(token, "v1/deliveries/b/attempts", new TenantId("tenant-a")));
+    }
 }

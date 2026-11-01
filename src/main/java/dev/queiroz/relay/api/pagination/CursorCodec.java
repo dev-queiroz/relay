@@ -56,6 +56,21 @@ public class CursorCodec {
             throw new InvalidCursorException();
         }
     }
+    public String encodeAttempt(String route, TenantId tenant, AttemptCursor cursor) {
+        String payload = String.join("|", "v1", route, ENCODER.encodeToString(tenant.value().getBytes(StandardCharsets.UTF_8)), "attempt", Integer.toString(cursor.sequenceNumber()), cursor.id().toString(), Long.toString(clock.instant().plus(LIFETIME).getEpochSecond()));
+        return ENCODER.encodeToString(payload.getBytes(StandardCharsets.UTF_8)) + "." + ENCODER.encodeToString(sign(payload));
+    }
+    public AttemptCursor decodeAttempt(String token, String route, TenantId tenant) {
+        try {
+            String[] parts = token.split("\\.", -1); if (parts.length != 2) throw new IllegalArgumentException();
+            String payload = new String(DECODER.decode(parts[0]), StandardCharsets.UTF_8);
+            if (!MessageDigest.isEqual(sign(payload), DECODER.decode(parts[1]))) throw new IllegalArgumentException();
+            String[] fields = payload.split("\\|", -1);
+            if (fields.length != 7 || !"v1".equals(fields[0]) || !route.equals(fields[1]) || !"attempt".equals(fields[3])) throw new IllegalArgumentException();
+            if (!tenant.value().equals(new String(DECODER.decode(fields[2]), StandardCharsets.UTF_8)) || !Instant.ofEpochSecond(Long.parseLong(fields[6])).isAfter(clock.instant())) throw new IllegalArgumentException();
+            return new AttemptCursor(Integer.parseInt(fields[4]), UUID.fromString(fields[5]));
+        } catch (RuntimeException exception) { throw new InvalidCursorException(); }
+    }
 
     private byte[] sign(String value) {
         try {

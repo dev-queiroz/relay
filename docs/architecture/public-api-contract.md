@@ -1,8 +1,8 @@
 # Relay Public API Contract — v1 (M5)
 
-- **Status:** Approved contract; endpoint management is implemented by #47, while status/history routes remain planned. Owner: Tech Lead. Date: 2026-10-31.
+- **Status:** Approved contract; endpoint management and status/history are implemented by #47 and #48. Owner: Tech Lead. Date: 2026-10-31.
 - **Normative definition:** [OpenAPI 3.1](../api/public-v1.yaml). This document explains invariants and rollout decisions.
-- **Existing implementation on `main`:** `POST /v1/events` and the endpoint-management routes in section 2 use `X-Relay-Api-Key`, tenant rate limiting, and safe problem responses. Status/history routes remain proposed work for #48.
+- **Existing implementation on `main`:** event ingestion, endpoint management and the status/history routes use `X-Relay-Api-Key`, tenant rate limiting, and safe problem responses.
 - **Dependencies:** `event-ingestion-contract.md`, `webhook-delivery-contract.md`, `threat-model.md`, ADR-0002.
 
 ## 1. Base conventions
