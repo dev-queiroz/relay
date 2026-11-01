@@ -35,6 +35,7 @@ These milestones are tentative, not release commitments.
 - Java 25 (JDK)
 - Git
 - Docker with the Compose plugin (for PostgreSQL and Testcontainers)
+- Node.js 20+ (for the ESM TypeScript SDK)
 
 The project uses the Maven Wrapper, so a global Maven installation is not required.
 
