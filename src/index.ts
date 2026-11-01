@@ -1,4 +1,5 @@
 export type Problem = { type: string; title: string; status: number; detail: string; instance?: string };
+export { RelayReceiver } from "./reference-receiver.js";
 export class RelayError extends Error { constructor(public readonly problem: Problem, public readonly retryAfter?: number) { super(problem.detail); this.name = "RelayError"; } }
 export class RelayNetworkError extends Error { constructor(message: string, public readonly ambiguousCommit = false) { super(message); this.name = "RelayNetworkError"; } }
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
