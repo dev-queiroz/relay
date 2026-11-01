@@ -7,6 +7,8 @@ import dev.queiroz.relay.delivery.web.EndpointInvalidRequestException;
 import dev.queiroz.relay.delivery.web.EndpointNotFoundException;
 import dev.queiroz.relay.delivery.web.EndpointPayloadTooLargeException;
 import dev.queiroz.relay.delivery.web.EndpointUnsupportedContentTypeException;
+import dev.queiroz.relay.status.web.StatusNotFoundException;
+import dev.queiroz.relay.status.web.StatusRequestException;
 import dev.queiroz.relay.ingestion.domain.InvalidEventException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -37,6 +39,8 @@ public class EventIngestionExceptionHandler extends ResponseEntityExceptionHandl
     ProblemDetail endpointNotFound() {
         return problem(HttpStatus.NOT_FOUND, "Not found", "The endpoint was not found");
     }
+    @ExceptionHandler(StatusNotFoundException.class) ProblemDetail statusNotFound() { return problem(HttpStatus.NOT_FOUND, "Not found", "The resource was not found"); }
+    @ExceptionHandler(StatusRequestException.class) ProblemDetail statusInvalidRequest() { return problem(HttpStatus.BAD_REQUEST, "Invalid request", "The request is invalid"); }
 
     @ExceptionHandler(UnsupportedContentTypeException.class)
     ProblemDetail unsupportedContentType() {
